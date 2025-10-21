@@ -1,0 +1,72 @@
+{
+  "stream_name": {
+    "filename": "^.+\\.fix$",
+    "encoding": "utf-8",
+    "record_code": [1, 1],
+    "records": {
+      "h": {
+        "record_code": {
+          "begin": 1,
+          "end": 1
+        },
+        "row_counter": {
+          "begin": 2,
+          "end": 10,
+          "type": "integer"
+        },
+        "file_creation_date": {
+          "begin": 11,
+          "end": 18,
+          "type": "date",
+          "format": "%Y%m%d"
+        },
+        "file_creation_time": {
+          "begin": 19,
+          "end": 24,
+          "type": "time",
+          "format": "%H%M%S"
+        }
+      },
+      "d": {
+        "record_record": {
+          "begin": 1,
+          "end": 1
+        },
+        "row_counter": {
+          "begin": 2,
+          "end": 10,
+          "type": "integer"
+        },
+        "amount": {
+          "begin": 11,
+          "end": 25,
+          "type": "decimal",
+          "format": "e-5"
+        }
+      },
+      "t": {
+        "record_code": {
+          "begin": 1,
+          "end": 1
+        },
+        "row_counter": {
+          "begin": 2,
+          "end": 10,
+          "type": "integer"
+        },
+        "file_creation_date": {
+          "begin": 11,
+          "end": 18,
+          "type": "date",
+          "format": "%Y%m%d"
+        },
+        "file_creation_time": {
+          "begin": 19,
+          "end": 24,
+          "type": "time",
+          "format": "%H%M%S"
+        }
+      }
+    }
+  }
+}

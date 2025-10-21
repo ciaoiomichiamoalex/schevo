@@ -1,0 +1,11 @@
+[
+  {
+    "name": "main",
+    "driver": "PostgreSQL ANSI",
+    "server": "127.0.0.1",
+    "port": 5432,
+    "database": "postgres",
+    "user": "schevo",
+    "password": "Schevo!2025"
+  }
+]
