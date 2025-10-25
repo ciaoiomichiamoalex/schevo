@@ -1,13 +1,12 @@
 import re
 from datetime import datetime
 
-from constants import (PATH_CFG, PATH_RES, QUERY_GET_COLUMNS, QUERY_GET_TABLES, SQL_FORMATS,
+from constants import (PATH_CFG, PATH_RES, QUERY_CHK_DUPLICATE, QUERY_GET_COLUMNS, QUERY_GET_TABLES, SQL_FORMATS,
                        TEMPLATE_QUERY_ADD_STREAM_RECORD, TEMPLATE_QUERY_ALTER_STREAM_RECORD,
                        TEMPLATE_QUERY_CREATE_STREAM, TEMPLATE_QUERY_CREATE_STREAM_INDEX,
                        TEMPLATE_QUERY_INSERT_STREAM_RECORD)
 from core import Querier
 from decoder import decode_config, decode_record
-from schevo.constants import QUERY_CHK_DUPLICATE
 
 
 def define_record_name(record_name: str) -> str:
