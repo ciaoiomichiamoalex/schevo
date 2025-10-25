@@ -11,12 +11,28 @@ from schevo.constants import QUERY_CHK_DUPLICATE
 
 
 def define_record_name(record_name: str) -> str:
+    """
+    Parse records name to make them usable in databases. By making it lowercase, removing spaces and initial numbers.
+
+    :param record_name: The raw record name.
+    :type record_name: str
+    :return: The record name parsed.
+    :rtype: str
+    """
     record_name = re.sub(r'[^a-z0-9]+', '_', record_name.lower()).strip('_')
     if re.match(r'^\d', record_name): record_name = f'c_{record_name}'
     return record_name
 
 
 def define_record_type(record: dict) -> str:
+    """
+    Define the database record type from the configuration record.
+
+    :param record: The record configuration.
+    :type record: dict
+    :return: The parsed SQL type.
+    :rtype: str
+    """
     match (record_type := record.get('type', 'string')):
         case 'decimal':
             precision = record['end'] - record['begin'] + 1
@@ -32,6 +48,18 @@ def define_record_type(record: dict) -> str:
 def check_stream(stream: str,
                  record_code: str,
                  config: dict[str, dict]) -> str:
+    """
+    Check if the table is already created or need to be modified in the database.
+
+    :param stream: The stream name.
+    :type stream: str
+    :param record_code: The record code for identify the correct table.
+    :type record_code: str
+    :param config: The configuration with column and their types.
+    :type config: dict[str, dict]
+    :return: The database table name.
+    :rtype: str
+    """
     querier: Querier = Querier(cfg_in=PATH_CFG, save_changes=True)
     stream_name = define_record_name(f'{stream.lower()}_{record_code.lower()}')
 
@@ -69,6 +97,14 @@ def check_stream(stream: str,
 
 def charge_stream(streams: dict[str, dict],
                   job_begin: datetime = datetime.now()) -> None:
+    """
+    Charge a file with format fixed-length into database tables, one or more for each record code.
+
+    :param streams: The result of decode_config() function with the input file and stream configuration.
+    :type streams: dict[str, dict]
+    :param job_begin: The timestamp of the job starting.
+    :type job_begin: datetime
+    """
     querier: Querier = Querier(cfg_in=PATH_CFG, save_changes=True)
 
     for stream, config in streams.items():
