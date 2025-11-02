@@ -1,5 +1,8 @@
 import re
+from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime
+from os import cpu_count
+from pathlib import Path
 
 from constants import (PATH_CFG, PATH_RES, QUERY_CHK_DUPLICATE, QUERY_GET_COLUMNS, QUERY_GET_TABLES, SQL_FORMATS,
                        TEMPLATE_QUERY_ADD_STREAM_RECORD, TEMPLATE_QUERY_ALTER_STREAM_RECORD,
@@ -94,53 +97,97 @@ def check_stream(stream: str,
     return stream_name
 
 
-def charge_stream(streams: dict[str, dict],
+def break_stream(stream: Path,
+                 encoding: str = None,
+                 rows_break: int = 100_000) -> list[Path]:
+    with open(stream, encoding=encoding) as fin:
+        suffix = 0
+        fou = open(f'{stream.stem}#{suffix}{stream.suffix}', 'w', encoding=encoding)
+
+        for row_num, row in enumerate(fin, start=1):
+            fou.write(row)
+
+            if row_num % rows_break == 0:
+                fou.close()
+                suffix += 1
+                fou = open(f'{stream.stem}#{suffix}{stream.suffix}', 'w', encoding=encoding)
+        fou.close()
+
+    return [
+        substream
+        for substream in stream.parent.iterdir()
+        if substream.is_file()
+        and substream.stem.startswith(stream.stem)
+    ]
+
+
+def charge_stream(fin: Path,
+                  stream: str,
+                  config: dict,
                   job_begin: datetime = datetime.now()) -> None:
     """
     Charge a file with format fixed-length into database tables, one or more for each record code.
 
-    :param streams: The result of decode_config() function with the input file and stream configuration.
-    :type streams: dict[str, dict]
+    :param fin: The input file to working on.
+    :type fin: Path
+    :param stream: The name of the stream.
+    :type stream: str
+    :param config: The stream configuration
+    :type config: dict
     :param job_begin: The timestamp of the job starting.
     :type job_begin: datetime
     """
     querier: Querier = Querier(cfg_in=PATH_CFG, save_changes=True)
+    with open(fin, encoding=config.get('encoding')) as source_in:
 
-    for stream, config in streams.items():
-        for fin in config['streams']:
-            with open(fin, encoding=config.get('encoding')) as source_in:
+        is_checked = {}
+        for row_num, row in enumerate(source_in, start=1):
+            record_code = row[config['record_code'][0] - 1 : config['record_code'][1]]
+            record = decode_record(row, config['config'].get(record_code))
+            if not record: continue
 
-                is_checked = {}
-                for row_num, row in enumerate(source_in, start=1):
-                    record_code = row[config['record_code'][0] - 1 : config['record_code'][1]]
-                    record = decode_record(row, config['config'].get(record_code))
-                    if not record: continue
+            if not is_checked.get(record_code):
+                is_checked[record_code] = check_stream(stream,
+                                                       record_code,
+                                                       config['config'].get(record_code))
+            if querier.run(QUERY_CHK_DUPLICATE % {
+                'stream': is_checked[record_code]
+            }, fin.name, row_num).fetch(Querier.FETCH_VAL):
+                continue
 
-                    if not is_checked.get(record_code):
-                        is_checked[record_code] = check_stream(stream,
-                                                               record_code,
-                                                               config['config'].get(record_code))
-                    if querier.run(QUERY_CHK_DUPLICATE % {
-                        'stream': is_checked[record_code]
-                    }, fin.name, row_num).fetch(Querier.FETCH_VAL):
-                        continue
-
-                    record.update({
-                        'sys_filename': fin.name,
-                        'sys_row_number': row_num,
-                        'sys_ins_date': job_begin
-                    })
-                    querier.run(
-                        TEMPLATE_QUERY_INSERT_STREAM_RECORD % {
-                            'stream': is_checked[record_code],
-                            'columns': ', '.join([*record.keys()]),
-                            'values': ', '.join('?' for _ in record)
-                        }, [*record.values()]
-                    )
+            record.update({
+                'sys_filename': fin.name,
+                'sys_row_number': row_num,
+                'sys_ins_date': job_begin
+            })
+            querier.run(
+                TEMPLATE_QUERY_INSERT_STREAM_RECORD % {
+                    'stream': is_checked[record_code],
+                    'columns': ', '.join([*record.keys()]),
+                    'values': ', '.join('?' for _ in record)
+                }, [*record.values()]
+            )
     del querier
+
+
+def runner(streams: dict[str, dict],
+           job_begin: datetime = datetime.now()) -> None:
+    """
+    Split the input file into files of 100.000 rows and start a thread on each one.
+
+    :param streams: The result of decode_config() function with the input file and stream configuration.
+    :type streams: dict[str, dict]
+    :param job_begin:
+    :type job_begin:
+    """
+    with ThreadPoolExecutor(max_workers=8 * cpu_count()) as executor:
+        for stream, config in streams.items():
+            for fin in config['streams']:
+                for sub_fin in break_stream(fin, encoding=config.get('encoding')):
+                    executor.submit(charge_stream, sub_fin, stream, config, job_begin)
 
 
 if __name__ == '__main__':
     job_begin = datetime.now()
-    charge_stream(decode_config(PATH_RES), job_begin=job_begin)
+    runner(decode_config(PATH_RES), job_begin=job_begin)
     print(datetime.now() - job_begin)
