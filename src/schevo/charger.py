@@ -184,7 +184,12 @@ def runner(streams: dict[str, dict],
         for stream, config in streams.items():
             for fin in config['streams']:
                 for sub_fin in break_stream(fin, encoding=config.get('encoding')):
-                    executor.submit(charge_stream, sub_fin, stream, config, job_begin)
+                    executor.submit(
+                        lambda f=sub_fin: (
+                            charge_stream(f, stream, config, job_begin),
+                            Path(f).unlink()
+                        )
+                    )
 
 
 if __name__ == '__main__':
