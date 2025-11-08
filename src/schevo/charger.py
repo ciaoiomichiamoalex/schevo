@@ -102,7 +102,7 @@ def break_stream(stream: Path,
                  rows_break: int = 100_000) -> list[Path]:
     with open(stream, encoding=encoding) as fin:
         suffix = 0
-        fou = open(f'{stream.stem}#{suffix}{stream.suffix}', 'w', encoding=encoding)
+        fou = open(stream.parent / f'{stream.name}#{suffix}', 'w', encoding=encoding)
 
         for row_num, row in enumerate(fin, start=1):
             fou.write(row)
@@ -110,7 +110,7 @@ def break_stream(stream: Path,
             if row_num % rows_break == 0:
                 fou.close()
                 suffix += 1
-                fou = open(f'{stream.stem}#{suffix}{stream.suffix}', 'w', encoding=encoding)
+                fou = open(stream.parent / f'{stream.name}#{suffix}', 'w', encoding=encoding)
         fou.close()
 
     return [
@@ -124,7 +124,8 @@ def break_stream(stream: Path,
 def charge_stream(fin: Path,
                   stream: str,
                   config: dict,
-                  job_begin: datetime = datetime.now()) -> None:
+                  job_begin: datetime = datetime.now(),
+                  rows_break: int = 100_000) -> None:
     """
     Charge a file with format fixed-length into database tables, one or more for each record code.
 
@@ -155,9 +156,10 @@ def charge_stream(fin: Path,
             }, fin.name, row_num).fetch(Querier.FETCH_VAL):
                 continue
 
+            sub_stream = fin.name.rsplit('#', maxsplit=1)
             record.update({
-                'sys_filename': fin.name,
-                'sys_row_number': row_num,
+                'sys_filename': sub_stream[0],
+                'sys_row_number': row_num + (int(sub_stream[-1].replace('#', '')) * rows_break),
                 'sys_ins_date': job_begin
             })
             querier.run(
@@ -185,8 +187,8 @@ def runner(streams: dict[str, dict],
             for fin in config['streams']:
                 for sub_fin in break_stream(fin, encoding=config.get('encoding')):
                     executor.submit(
-                        lambda f=sub_fin: (
-                            charge_stream(f, stream, config, job_begin),
+                        lambda f=sub_fin, s=stream, c=config, j=job_begin: (
+                            charge_stream(f, s, c, j),
                             Path(f).unlink()
                         )
                     )
