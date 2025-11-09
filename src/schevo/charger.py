@@ -125,7 +125,7 @@ def break_stream(stream: Path,
         substream
         for substream in stream.parent.iterdir()
         if substream.is_file()
-            and substream.stem.startswith(stream.stem)
+            and substream.name.startswith(stream.name)
             and substream != stream
     ]
 
