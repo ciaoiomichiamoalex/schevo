@@ -44,7 +44,7 @@ TEMPLATE_QUERY_CREATE_STREAM = """\
     ;
 """
 TEMPLATE_QUERY_CREATE_STREAM_INDEX = """\
-    CREATE UNIQUE INDEX idx_%(stream)s_filename_row_number
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_%(stream)s_filename_row_number
         ON schevo.%(stream)s (sys_filename, sys_row_number)
     ;
 """
