@@ -71,7 +71,7 @@ def check_stream(stream_name: str,
                 in querier.run(QUERY_GET_COLUMNS, table_name).fetch(Querier.FETCH_ALL)
             }
 
-            for key, value in config.items():
+            for key, value in columns_config.items():
                 if key not in columns:
                     querier.run(TEMPLATE_QUERY_ADD_STREAM_RECORD % {
                         'stream': table_name,
@@ -86,7 +86,7 @@ def check_stream(stream_name: str,
                     })
         else:
             records = ''
-            for key, value in config.items():
+            for key, value in columns_config.items():
                 records += define_record_name(key)
                 records += f' {define_record_type(value)}, '
 
@@ -221,7 +221,7 @@ def runner(streams: dict[str, dict],
     with ThreadPoolExecutor(max_workers=min(32, (cpu_count() or 1) * 2)) as executor:
         futures: list[Future] = []
         for stream_name, config in streams.items():
-            check_stream(stream_name, config)
+            check_stream(stream_name, config['config'])
 
             for stream in config['streams']:
                 for substream in break_stream(stream, encoding=config.get('encoding')):
