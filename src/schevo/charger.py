@@ -1,6 +1,4 @@
 import re
-import threading
-import traceback
 from asyncio import Future
 from concurrent.futures.thread import ThreadPoolExecutor
 from datetime import datetime
@@ -161,14 +159,15 @@ def charge_stream(stream: Path,
 
             table_name = define_record_name(f'{stream_name.lower()}_{record_code.lower()}')
             substream = stream.name.rsplit('#', maxsplit=1)
+            filename, row_number = substream[0], row_num + (int(substream[-1].replace('#', '')) * rows_break)
             if querier.run(QUERY_CHK_DUPLICATE % {
                 'stream': table_name
-            }, substream[0], row_num).fetch(Querier.FETCH_VAL):
+            }, filename, row_number).fetch(Querier.FETCH_VAL):
                 continue
 
             record.update({
-                'sys_filename': substream[0],
-                'sys_row_number': row_num + (int(substream[-1].replace('#', '')) * rows_break),
+                'sys_filename': filename,
+                'sys_row_number': row_number,
                 'sys_ins_date': job_begin
             })
             querier.run(
@@ -207,15 +206,8 @@ def runner(streams: dict[str, dict],
         :param job_begin: The timestamp of the job starting.
         :type job_begin: datetime
         """
-        thread_name = threading.current_thread().name
-        print(f'Thread {thread_name}: working on {stream.name}', flush=True)
-
-        try:
-            charge_stream(stream, stream_name, config, job_begin),
-            print(f'Thread {thread_name}: end working on {stream.name}', flush=True)
-        except Exception:
-            print(f'Thread {thread_name}: error on {stream.name}\n{traceback.format_exc()}', flush=True)
-            raise
+        try: charge_stream(stream, stream_name, config, job_begin),
+        except Exception: raise
         finally: stream.unlink(missing_ok=True)
 
     with ThreadPoolExecutor(max_workers=min(32, (cpu_count() or 1) * 2)) as executor:
