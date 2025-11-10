@@ -76,7 +76,10 @@ def decode_record(record: str,
                 value = Decimal(value + field.get('format', 'e-2'))
             case _: pass
 
-        res[key] = value if value else None
+        res[key] = (value
+                    if value
+                        and isinstance(value, str)
+                    else None)
     return res
 
 
