@@ -102,7 +102,9 @@ def txt2xlsx(streams: dict[str, dict]) -> None:
                 for row in tqdm(source_in,
                                 total=total_rows,
                                 bar_format='{n_fmt}/{total_fmt} |{bar}| {percentage:3.0f}%'):
-                    record_code = row[config['record_code'][0] - 1 : config['record_code'][1]]
+                    if config['record_code']:
+                        record_code = row[config['record_code'][0] - 1 : config['record_code'][1]]
+                    else: record_code = stream
                     record = decode_record(row, config['config'].get(record_code))
                     if not record: continue
 

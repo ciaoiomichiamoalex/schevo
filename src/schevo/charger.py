@@ -60,7 +60,11 @@ def check_stream(stream_name: str,
     """
     querier: Querier = Querier(cfg_in=PATH_CFG, save_changes=True)
     for record_code, columns_config in config.items():
-        table_name = define_record_name(f'{stream_name.lower()}_{record_code.lower()}')
+        table_name = (
+            define_record_name(f'{stream_name.lower()}_{record_code.lower()}')
+            if stream_name != record_code
+            else define_record_name(stream_name.lower())
+        )
 
         if querier.run(QUERY_GET_TABLES, table_name).fetch(Querier.FETCH_VAL):
             columns = {
@@ -153,11 +157,17 @@ def charge_stream(stream: Path,
     with open(stream, encoding=config.get('encoding')) as source_in:
 
         for row_num, row in enumerate(source_in, start=1):
-            record_code = row[config['record_code'][0] - 1 : config['record_code'][1]]
+            if config['record_code']:
+                record_code = row[config['record_code'][0] - 1 : config['record_code'][1]]
+            else: record_code = stream_name
             record = decode_record(row, config['config'].get(record_code))
             if not record: continue
 
-            table_name = define_record_name(f'{stream_name.lower()}_{record_code.lower()}')
+            table_name = (
+                define_record_name(f'{stream_name.lower()}_{record_code.lower()}')
+                if stream_name != record_code
+                else define_record_name(stream_name.lower())
+            )
             substream = stream.name.rsplit('#', maxsplit=1)
             filename, row_number = substream[0], row_num + (int(substream[-1].replace('#', '')) * rows_break)
             if querier.run(QUERY_CHK_DUPLICATE % {
