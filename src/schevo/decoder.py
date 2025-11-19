@@ -38,6 +38,7 @@ def decode_config(working_dir: str | Path) -> dict[str, dict]:
                 res.setdefault(stream, {
                     'streams': [],
                     'encoding': config[stream].get('encoding'),
+                    'clean': config[stream].get('clean', False),
                     'record_code': config[stream]['record_code'],
                     'config': config[stream]['records']
                 })['streams'].append(fin)

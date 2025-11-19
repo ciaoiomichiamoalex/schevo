@@ -8,7 +8,7 @@ from pathlib import Path
 from constants import (PATH_CFG, PATH_RES, QUERY_CHK_DUPLICATE, QUERY_GET_COLUMNS, QUERY_GET_TABLES,
                        SQL_FORMATS, TEMPLATE_QUERY_ADD_STREAM_RECORD, TEMPLATE_QUERY_ALTER_STREAM_RECORD,
                        TEMPLATE_QUERY_CREATE_STREAM, TEMPLATE_QUERY_CREATE_STREAM_INDEX,
-                       TEMPLATE_QUERY_INSERT_STREAM_RECORD)
+                       TEMPLATE_QUERY_INSERT_STREAM_RECORD, TEMPLATE_QUERY_TRUNCATE_STREAM)
 from core import Querier
 from decoder import decode_config, decode_record
 
@@ -49,7 +49,8 @@ def define_record_type(record: dict) -> str:
 
 
 def check_stream(stream_name: str,
-                 config: dict[str, dict]) -> None:
+                 config: dict[str, dict],
+                 clean: bool = False) -> None:
     """
     Check if the table is already created or need to be modified in the database.
 
@@ -57,6 +58,8 @@ def check_stream(stream_name: str,
     :type stream_name: str
     :param config: The configuration with column and their types.
     :type config: dict[str, dict]
+    :param clean: Truncate the stream table, defaults to False.
+    :type clean: bool
     """
     querier: Querier = Querier(cfg_in=PATH_CFG, save_changes=True)
     for record_code, columns_config in config.items():
@@ -67,6 +70,7 @@ def check_stream(stream_name: str,
         )
 
         if querier.run(QUERY_GET_TABLES, table_name).fetch(Querier.FETCH_VAL):
+            if clean: querier.run(TEMPLATE_QUERY_TRUNCATE_STREAM % {'stream': table_name})
             columns = {
                 col: (type, len)
                 for col, type, len
@@ -223,7 +227,7 @@ def runner(streams: dict[str, dict],
     with ThreadPoolExecutor(max_workers=min(32, (cpu_count() or 1) * 2)) as executor:
         futures: list[Future] = []
         for stream_name, config in streams.items():
-            check_stream(stream_name, config['config'])
+            check_stream(stream_name, config['config'], config['clean'])
 
             for stream in config['streams']:
                 for substream in break_stream(stream, encoding=config.get('encoding')):

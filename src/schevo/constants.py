@@ -16,7 +16,7 @@ EXCEL_FORMATS: dict = {
     time: 'h:mm:ss;@',
     datetime: 'dd/mm/yyyy h:mm:ss;@'
 }
-EXCEL_MAX_ROWS = 1_000_000
+EXCEL_MAX_ROWS: int = 1_000_000
 
 SQL_FORMATS: dict = {
     'string': 'VARCHAR(%d)',
@@ -47,6 +47,9 @@ TEMPLATE_QUERY_CREATE_STREAM_INDEX = """\
     CREATE UNIQUE INDEX IF NOT EXISTS idx_%(stream)s_filename_row_number
         ON schevo.%(stream)s (sys_filename, sys_row_number)
     ;
+"""
+TEMPLATE_QUERY_TRUNCATE_STREAM = """\
+    TRUNCATE TABLE schevo.%(stream)s RESTART IDENTITY;
 """
 TEMPLATE_QUERY_ADD_STREAM_RECORD = """\
     ALTER TABLE schevo.%(stream)s
